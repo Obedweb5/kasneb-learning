@@ -3,13 +3,23 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: KASNEB Learning Hub API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: catalog
+    description: Courses, units, and learning resources
+  - name: learning
+    description: Student learning progress
+  - name: payments
+    description: Daraja M-Pesa checkout and order status
+  - name: admin
+    description: Course content management and platform insights
+  - name: contact
+    description: Student support messages
 paths:
   /healthz:
     get:
@@ -24,6 +34,210 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /courses:
+    get:
+      operationId: listCourses
+      tags: [catalog]
+      summary: List KASNEB courses
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: unit
+          in: query
+          schema: { type: string }
+        - name: level
+          in: query
+          schema:
+            type: string
+            enum: [foundation, intermediate, advanced]
+        - name: featured
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        "200":
+          description: Course catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Course" }
+    post:
+      operationId: createCourse
+      tags: [admin]
+      summary: Create a course
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CourseInput" }
+      responses:
+        "201":
+          description: Created course
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Course" }
+  /courses/{courseId}:
+    get:
+      operationId: getCourse
+      tags: [catalog]
+      summary: Get a course with its units
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Course detail
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CourseDetail" }
+        "404":
+          description: Course not found
+    patch:
+      operationId: updateCourse
+      tags: [admin]
+      summary: Update a course
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CourseUpdate" }
+      responses:
+        "200":
+          description: Updated course
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Course" }
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [learning]
+      summary: Get student dashboard summary
+      responses:
+        "200":
+          description: Student dashboard
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Dashboard" }
+  /courses/{courseId}/enroll:
+    post:
+      operationId: enrollCourse
+      tags: [learning]
+      summary: Enroll the current student in a course
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "201":
+          description: Enrollment created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Enrollment" }
+  /enrollments/{enrollmentId}/progress:
+    patch:
+      operationId: updateProgress
+      tags: [learning]
+      summary: Save progress on a course
+      parameters:
+        - name: enrollmentId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProgressInput" }
+      responses:
+        "200":
+          description: Updated enrollment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Enrollment" }
+  /resources:
+    post:
+      operationId: createResource
+      tags: [admin]
+      summary: Add notes, past papers, or video tutorials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResourceInput" }
+      responses:
+        "201":
+          description: Created resource
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Resource" }
+  /payments/mpesa/stk-push:
+    post:
+      operationId: initiateMpesaPayment
+      tags: [payments]
+      summary: Initiate a Daraja STK push
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PaymentInput" }
+      responses:
+        "201":
+          description: Payment request
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Payment" }
+  /payments/{paymentId}:
+    get:
+      operationId: getPayment
+      tags: [payments]
+      summary: Check payment status
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Payment status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Payment" }
+  /admin/overview:
+    get:
+      operationId: getAdminOverview
+      tags: [admin]
+      summary: Get admin sales and content overview
+      responses:
+        "200":
+          description: Admin overview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminOverview" }
+  /contact:
+    post:
+      operationId: submitContact
+      tags: [contact]
+      summary: Send a support message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContactInput" }
+      responses:
+        "201":
+          description: Message received
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContactMessage" }
 components:
   schemas:
     HealthStatus:
@@ -33,4 +247,190 @@ components:
           type: string
       required:
         - status
+    Course:
+      type: object
+      required: [id, slug, title, unitCode, level, price, description, duration, students, rating, featured, accent, image, resourceCount]
+      properties:
+        id: { type: string }
+        slug: { type: string }
+        title: { type: string }
+        unitCode: { type: string }
+        level:
+          type: string
+          enum: [foundation, intermediate, advanced]
+        price: { type: number }
+        description: { type: string }
+        duration: { type: string }
+        students: { type: integer }
+        rating: { type: number }
+        featured: { type: boolean }
+        accent: { type: string }
+        image: { type: string }
+        resourceCount: { type: integer }
+    CourseDetail:
+      allOf:
+        - $ref: "#/components/schemas/Course"
+        - type: object
+          required: [units]
+          properties:
+            units:
+              type: array
+              items: { $ref: "#/components/schemas/Unit" }
+    CourseInput:
+      type: object
+      required: [title, unitCode, level, price, description, duration]
+      properties:
+        title: { type: string, minLength: 1 }
+        unitCode: { type: string, minLength: 1 }
+        level:
+          type: string
+          enum: [foundation, intermediate, advanced]
+        price: { type: number, minimum: 0 }
+        description: { type: string }
+        duration: { type: string }
+        featured: { type: boolean }
+        accent: { type: string }
+        image: { type: string }
+    CourseUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1 }
+        price: { type: number, minimum: 0 }
+        description: { type: string }
+        featured: { type: boolean }
+        accent: { type: string }
+    Unit:
+      type: object
+      required: [id, title, code, description, resourceCount, completed]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        code: { type: string }
+        description: { type: string }
+        resourceCount: { type: integer }
+        completed: { type: boolean }
+    Resource:
+      type: object
+      required: [id, courseId, title, type, description, duration, size, isLocked, url]
+      properties:
+        id: { type: string }
+        courseId: { type: string }
+        title: { type: string }
+        type:
+          type: string
+          enum: [video, notes, past-paper, quiz]
+        description: { type: string }
+        duration: { type: string }
+        size: { type: string }
+        isLocked: { type: boolean }
+        url: { type: string }
+    ResourceInput:
+      type: object
+      required: [courseId, title, type, description]
+      properties:
+        courseId: { type: string }
+        title: { type: string, minLength: 1 }
+        type:
+          type: string
+          enum: [video, notes, past-paper, quiz]
+        description: { type: string }
+        duration: { type: string }
+        size: { type: string }
+        url: { type: string }
+    Enrollment:
+      type: object
+      required: [id, courseId, courseTitle, progress, lastLesson, nextLesson, updatedAt]
+      properties:
+        id: { type: string }
+        courseId: { type: string }
+        courseTitle: { type: string }
+        progress: { type: integer, minimum: 0, maximum: 100 }
+        lastLesson: { type: string }
+        nextLesson: { type: string }
+        updatedAt: { type: string, format: date-time }
+    Dashboard:
+      type: object
+      required: [greeting, streak, hoursLearned, coursesInProgress, completedCourses, enrollments, upcomingExam]
+      properties:
+        greeting: { type: string }
+        streak: { type: integer }
+        hoursLearned: { type: number }
+        coursesInProgress: { type: integer }
+        completedCourses: { type: integer }
+        enrollments:
+          type: array
+          items: { $ref: "#/components/schemas/Enrollment" }
+        upcomingExam:
+          type: object
+          required: [title, date, daysLeft]
+          properties:
+            title: { type: string }
+            date: { type: string }
+            daysLeft: { type: integer }
+    ProgressInput:
+      type: object
+      required: [progress, lesson]
+      properties:
+        progress: { type: integer, minimum: 0, maximum: 100 }
+        lesson: { type: string }
+    PaymentInput:
+      type: object
+      required: [courseId, phoneNumber]
+      properties:
+        courseId: { type: string }
+        phoneNumber:
+          type: string
+          pattern: "^254[17][0-9]{8}$"
+    Payment:
+      type: object
+      required: [id, courseId, amount, phoneNumber, status, message, createdAt]
+      properties:
+        id: { type: string }
+        courseId: { type: string }
+        amount: { type: number }
+        phoneNumber: { type: string }
+        status:
+          type: string
+          enum: [pending, completed, failed]
+        message: { type: string }
+        createdAt: { type: string, format: date-time }
+    AdminOverview:
+      type: object
+      required: [totalRevenue, paidOrders, students, publishedResources, recentOrders, resourcesByType]
+      properties:
+        totalRevenue: { type: number }
+        paidOrders: { type: integer }
+        students: { type: integer }
+        publishedResources: { type: integer }
+        recentOrders:
+          type: array
+          items: { $ref: "#/components/schemas/Payment" }
+        resourcesByType:
+          type: array
+          items:
+            type: object
+            required: [type, count]
+            properties:
+              type: { type: string }
+              count: { type: integer }
+    ContactInput:
+      type: object
+      required: [name, email, subject, message]
+      properties:
+        name: { type: string, minLength: 2 }
+        email: { type: string, format: email }
+        subject: { type: string, minLength: 2 }
+        message: { type: string, minLength: 10 }
+    ContactMessage:
+      type: object
+      required: [id, name, email, subject, message, status]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        subject: { type: string }
+        message: { type: string }
+        status:
+          type: string
+          enum: [received, replied]
 

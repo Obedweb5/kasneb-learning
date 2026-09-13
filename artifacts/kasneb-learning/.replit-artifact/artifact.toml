@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "KASNEB Learning Hub"
+description = "A KASNEB-focused digital learning marketplace for CPA units, revision notes, past papers, video tutorials, student progress, and M-Pesa purchases."
+version = "1.0.0"
+id = "artifacts/kasneb-learning"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23463
+
+[services.development]
+run = "pnpm --filter @workspace/kasneb-learning run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/kasneb-learning", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/kasneb-learning/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23463"
+BASE_PATH = "/"
