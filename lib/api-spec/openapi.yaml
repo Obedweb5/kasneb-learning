@@ -115,6 +115,18 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Course" }
+    delete:
+      operationId: deleteCourse
+      tags: [admin]
+      summary: Delete a course
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Course deleted
   /dashboard:
     get:
       operationId: getDashboard
@@ -179,6 +191,19 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Resource" }
+  /resources/{resourceId}:
+    delete:
+      operationId: deleteResource
+      tags: [admin]
+      summary: Delete a learning resource
+      parameters:
+        - name: resourceId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Resource deleted
   /payments/mpesa/stk-push:
     post:
       operationId: initiateMpesaPayment
@@ -222,6 +247,147 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminOverview" }
+  /admin/students:
+    get:
+      operationId: listAdminStudents
+      tags: [admin]
+      summary: List student accounts for admin management
+      responses:
+        "200":
+          description: Student accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Student" }
+  /admin/students/{studentId}/status:
+    patch:
+      operationId: updateStudentStatus
+      tags: [admin]
+      summary: Enable or suspend a student account
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentStatusUpdate" }
+      responses:
+        "200":
+          description: Updated student account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Student" }
+  /admin/payments:
+    get:
+      operationId: listAdminPayments
+      tags: [admin]
+      summary: List payments for reconciliation
+      responses:
+        "200":
+          description: Payment records
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminPayment" }
+  /admin/payments/{paymentId}/status:
+    patch:
+      operationId: updatePaymentStatus
+      tags: [admin]
+      summary: Update a payment status
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PaymentStatusUpdate" }
+      responses:
+        "200":
+          description: Updated payment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPayment" }
+  /admin/resources:
+    get:
+      operationId: listAdminResources
+      tags: [admin]
+      summary: List all resources across courses
+      responses:
+        "200":
+          description: Resources
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminResource" }
+  /admin/messages:
+    get:
+      operationId: listAdminMessages
+      tags: [admin]
+      summary: List support messages
+      responses:
+        "200":
+          description: Support inbox
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ContactMessage" }
+  /admin/messages/{messageId}/status:
+    patch:
+      operationId: updateMessageStatus
+      tags: [admin]
+      summary: Mark a support message as received or replied
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MessageStatusUpdate" }
+      responses:
+        "200":
+          description: Updated support message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContactMessage" }
+  /admin/settings:
+    get:
+      operationId: getAdminSettings
+      tags: [admin]
+      summary: Get platform settings
+      responses:
+        "200":
+          description: Platform settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformSettings" }
+    patch:
+      operationId: updateAdminSettings
+      tags: [admin]
+      summary: Update platform settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SettingsUpdate" }
+      responses:
+        "200":
+          description: Updated platform settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformSettings" }
   /contact:
     post:
       operationId: submitContact
@@ -413,6 +579,79 @@ components:
             properties:
               type: { type: string }
               count: { type: integer }
+    Student:
+      type: object
+      required: [id, name, email, status, joinedAt, enrolledCourses, progress, lastActive]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        status:
+          type: string
+          enum: [active, suspended]
+        joinedAt: { type: string, format: date-time }
+        enrolledCourses: { type: integer }
+        progress: { type: integer }
+        lastActive: { type: string }
+    StudentStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [active, suspended]
+    AdminPayment:
+      allOf:
+        - $ref: "#/components/schemas/Payment"
+        - type: object
+          required: [courseTitle, studentName]
+          properties:
+            courseTitle: { type: string }
+            studentName: { type: string }
+    PaymentStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending, completed, failed]
+    AdminResource:
+      allOf:
+        - $ref: "#/components/schemas/Resource"
+        - type: object
+          required: [courseTitle]
+          properties:
+            courseTitle: { type: string }
+    MessageStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [received, replied]
+    PlatformSettings:
+      type: object
+      required: [siteName, supportEmail, supportPhone, defaultCurrency, examSitting, maintenanceMode, allowNewEnrollments, showFeaturedCourses]
+      properties:
+        siteName: { type: string }
+        supportEmail: { type: string, format: email }
+        supportPhone: { type: string }
+        defaultCurrency: { type: string }
+        examSitting: { type: string }
+        maintenanceMode: { type: boolean }
+        allowNewEnrollments: { type: boolean }
+        showFeaturedCourses: { type: boolean }
+    SettingsUpdate:
+      type: object
+      properties:
+        siteName: { type: string, minLength: 2 }
+        supportEmail: { type: string, format: email }
+        supportPhone: { type: string }
+        defaultCurrency: { type: string }
+        examSitting: { type: string }
+        maintenanceMode: { type: boolean }
+        allowNewEnrollments: { type: boolean }
+        showFeaturedCourses: { type: boolean }
     ContactInput:
       type: object
       required: [name, email, subject, message]

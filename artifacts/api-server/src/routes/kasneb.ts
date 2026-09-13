@@ -7,10 +7,17 @@ import {
   GetPaymentParams,
   InitiateMpesaPaymentBody,
   SubmitContactBody,
+  UpdateAdminSettingsBody,
+  UpdateMessageStatusBody,
+  UpdateMessageStatusParams,
+  UpdatePaymentStatusBody,
+  UpdatePaymentStatusParams,
   UpdateCourseBody,
   UpdateCourseParams,
   UpdateProgressBody,
   UpdateProgressParams,
+  UpdateStudentStatusBody,
+  UpdateStudentStatusParams,
 } from "@workspace/api-zod";
 import {
   contactMessages,
@@ -18,6 +25,8 @@ import {
   enrollments,
   payments,
   resources,
+  platformSettings,
+  students,
   units,
   type Course,
   type Payment,
@@ -36,6 +45,30 @@ function paymentForResponse(payment: Payment) {
   return {
     ...payment,
     createdAt: payment.createdAt.toISOString(),
+  };
+}
+
+function studentForResponse(student: (typeof students)[number]) {
+  return {
+    ...student,
+    joinedAt: student.joinedAt.toISOString(),
+  };
+}
+
+function adminPaymentForResponse(payment: Payment) {
+  const course = getCourse(payment.courseId);
+  const student = students.find((item) => item.id === "student-amina");
+  return {
+    ...paymentForResponse(payment),
+    courseTitle: course?.title ?? "Unknown course",
+    studentName: student?.name ?? "Demo student",
+  };
+}
+
+function adminResourceForResponse(resource: Resource) {
+  return {
+    ...resource,
+    courseTitle: getCourse(resource.courseId)?.title ?? "Unknown course",
   };
 }
 
@@ -123,6 +156,21 @@ router.patch("/courses/:courseId", (req, res) => {
   }
   Object.assign(course, parsed.data);
   res.json(course);
+});
+
+router.delete("/courses/:courseId", (req, res) => {
+  const course = getCourse(req.params.courseId);
+  if (!course) {
+    res.status(404).json({ error: "Course not found" });
+    return;
+  }
+  const index = courses.indexOf(course);
+  courses.splice(index, 1);
+  delete units[course.id];
+  for (let index = resources.length - 1; index >= 0; index -= 1) {
+    if (resources[index].courseId === course.id) resources.splice(index, 1);
+  }
+  res.status(204).send();
 });
 
 router.get("/dashboard", (_req, res) => {
@@ -217,6 +265,18 @@ router.post("/resources", (req, res) => {
   res.status(201).json(resource);
 });
 
+router.delete("/resources/:resourceId", (req, res) => {
+  const index = resources.findIndex((resource) => resource.id === req.params.resourceId);
+  if (index === -1) {
+    res.status(404).json({ error: "Resource not found" });
+    return;
+  }
+  const [resource] = resources.splice(index, 1);
+  const course = getCourse(resource.courseId);
+  if (course) course.resourceCount = Math.max(0, course.resourceCount - 1);
+  res.status(204).send();
+});
+
 router.post("/payments/mpesa/stk-push", (req, res) => {
   const parsed = InitiateMpesaPaymentBody.safeParse(req.body);
   if (!parsed.success) {
@@ -271,6 +331,90 @@ router.get("/admin/overview", (_req, res) => {
     recentOrders: payments.slice(0, 5).map(paymentForResponse),
     resourcesByType: Object.entries(counts).map(([type, count]) => ({ type, count })),
   });
+});
+
+router.get("/admin/students", (_req, res) => {
+  res.json(students.map(studentForResponse));
+});
+
+router.patch("/admin/students/:studentId/status", (req, res) => {
+  const params = UpdateStudentStatusParams.safeParse(req.params);
+  const parsed = UpdateStudentStatusBody.safeParse(req.body);
+  if (!params.success || !parsed.success) {
+    res.status(400).json({ error: !params.success ? params.error.message : parsed.error.message });
+    return;
+  }
+  const student = students.find((item) => item.id === params.data.studentId);
+  if (!student) {
+    res.status(404).json({ error: "Student not found" });
+    return;
+  }
+  student.status = parsed.data.status;
+  res.json(studentForResponse(student));
+});
+
+router.get("/admin/payments", (_req, res) => {
+  res.json(payments.map(adminPaymentForResponse));
+});
+
+router.patch("/admin/payments/:paymentId/status", (req, res) => {
+  const params = UpdatePaymentStatusParams.safeParse(req.params);
+  const parsed = UpdatePaymentStatusBody.safeParse(req.body);
+  if (!params.success || !parsed.success) {
+    res.status(400).json({ error: !params.success ? params.error.message : parsed.error.message });
+    return;
+  }
+  const payment = payments.find((item) => item.id === params.data.paymentId);
+  if (!payment) {
+    res.status(404).json({ error: "Payment not found" });
+    return;
+  }
+  payment.status = parsed.data.status;
+  payment.message =
+    parsed.data.status === "completed"
+      ? "Payment received and course access granted."
+      : parsed.data.status === "failed"
+        ? "Payment marked as failed by an administrator."
+        : "Payment is awaiting confirmation.";
+  res.json(adminPaymentForResponse(payment));
+});
+
+router.get("/admin/resources", (_req, res) => {
+  res.json(resources.map(adminResourceForResponse));
+});
+
+router.get("/admin/messages", (_req, res) => {
+  res.json(contactMessages);
+});
+
+router.patch("/admin/messages/:messageId/status", (req, res) => {
+  const params = UpdateMessageStatusParams.safeParse(req.params);
+  const parsed = UpdateMessageStatusBody.safeParse(req.body);
+  if (!params.success || !parsed.success) {
+    res.status(400).json({ error: !params.success ? params.error.message : parsed.error.message });
+    return;
+  }
+  const message = contactMessages.find((item) => item.id === params.data.messageId);
+  if (!message) {
+    res.status(404).json({ error: "Message not found" });
+    return;
+  }
+  message.status = parsed.data.status;
+  res.json(message);
+});
+
+router.get("/admin/settings", (_req, res) => {
+  res.json(platformSettings);
+});
+
+router.patch("/admin/settings", (req, res) => {
+  const parsed = UpdateAdminSettingsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  Object.assign(platformSettings, parsed.data);
+  res.json(platformSettings);
 });
 
 router.post("/contact", (req, res) => {

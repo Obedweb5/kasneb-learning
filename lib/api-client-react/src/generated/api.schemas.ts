@@ -203,6 +203,94 @@ export interface AdminOverview {
   resourcesByType: AdminOverviewResourcesByTypeItem[];
 }
 
+export type StudentStatus = typeof StudentStatus[keyof typeof StudentStatus];
+
+
+export const StudentStatus = {
+  active: 'active',
+  suspended: 'suspended',
+} as const;
+
+export interface Student {
+  id: string;
+  name: string;
+  email: string;
+  status: StudentStatus;
+  joinedAt: string;
+  enrolledCourses: number;
+  progress: number;
+  lastActive: string;
+}
+
+export type StudentStatusUpdateStatus = typeof StudentStatusUpdateStatus[keyof typeof StudentStatusUpdateStatus];
+
+
+export const StudentStatusUpdateStatus = {
+  active: 'active',
+  suspended: 'suspended',
+} as const;
+
+export interface StudentStatusUpdate {
+  status: StudentStatusUpdateStatus;
+}
+
+export type AdminPayment = Payment & {
+  courseTitle: string;
+  studentName: string;
+};
+
+export type PaymentStatusUpdateStatus = typeof PaymentStatusUpdateStatus[keyof typeof PaymentStatusUpdateStatus];
+
+
+export const PaymentStatusUpdateStatus = {
+  pending: 'pending',
+  completed: 'completed',
+  failed: 'failed',
+} as const;
+
+export interface PaymentStatusUpdate {
+  status: PaymentStatusUpdateStatus;
+}
+
+export type AdminResource = Resource & {
+  courseTitle: string;
+};
+
+export type MessageStatusUpdateStatus = typeof MessageStatusUpdateStatus[keyof typeof MessageStatusUpdateStatus];
+
+
+export const MessageStatusUpdateStatus = {
+  received: 'received',
+  replied: 'replied',
+} as const;
+
+export interface MessageStatusUpdate {
+  status: MessageStatusUpdateStatus;
+}
+
+export interface PlatformSettings {
+  siteName: string;
+  supportEmail: string;
+  supportPhone: string;
+  defaultCurrency: string;
+  examSitting: string;
+  maintenanceMode: boolean;
+  allowNewEnrollments: boolean;
+  showFeaturedCourses: boolean;
+}
+
+export interface SettingsUpdate {
+  /** @minLength 2 */
+  siteName?: string;
+  supportEmail?: string;
+  supportPhone?: string;
+  defaultCurrency?: string;
+  examSitting?: string;
+  maintenanceMode?: boolean;
+  allowNewEnrollments?: boolean;
+  showFeaturedCourses?: boolean;
+}
+
 export interface ContactInput {
   /** @minLength 2 */
   name: string;

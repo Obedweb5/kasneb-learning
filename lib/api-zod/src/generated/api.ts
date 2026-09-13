@@ -160,6 +160,16 @@ export const UpdateCourseResponse = zod.object({
 
 
 /**
+ * @summary Delete a course
+ */
+export const DeleteCourseParams = zod.object({
+  "courseId": zod.coerce.string()
+})
+
+export const DeleteCourseResponse = zod.void()
+
+
+/**
  * @summary Get student dashboard summary
  */
 export const getDashboardResponseEnrollmentsItemProgressMin = 0;
@@ -276,6 +286,16 @@ export const CreateResourceResponse = zod.object({
 
 
 /**
+ * @summary Delete a learning resource
+ */
+export const DeleteResourceParams = zod.object({
+  "resourceId": zod.coerce.string()
+})
+
+export const DeleteResourceResponse = zod.void()
+
+
+/**
  * @summary Initiate a Daraja STK push
  */
 export const initiateMpesaPaymentBodyPhoneNumberRegExp = new RegExp('^254[17][0-9]{8}$');
@@ -336,6 +356,187 @@ export const GetAdminOverviewResponse = zod.object({
   "type": zod.string(),
   "count": zod.number().int()
 }))
+})
+
+
+/**
+ * @summary List student accounts for admin management
+ */
+export const ListAdminStudentsResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "status": zod.enum(['active', 'suspended']),
+  "joinedAt": zod.coerce.date(),
+  "enrolledCourses": zod.number().int(),
+  "progress": zod.number().int(),
+  "lastActive": zod.string()
+})
+export const ListAdminStudentsResponse = zod.array(ListAdminStudentsResponseItem)
+
+
+/**
+ * @summary Enable or suspend a student account
+ */
+export const UpdateStudentStatusParams = zod.object({
+  "studentId": zod.coerce.string()
+})
+
+export const UpdateStudentStatusBody = zod.object({
+  "status": zod.enum(['active', 'suspended'])
+})
+
+export const UpdateStudentStatusResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "status": zod.enum(['active', 'suspended']),
+  "joinedAt": zod.coerce.date(),
+  "enrolledCourses": zod.number().int(),
+  "progress": zod.number().int(),
+  "lastActive": zod.string()
+})
+
+
+/**
+ * @summary List payments for reconciliation
+ */
+export const ListAdminPaymentsResponseItem = zod.object({
+  "id": zod.string(),
+  "courseId": zod.string(),
+  "amount": zod.number(),
+  "phoneNumber": zod.string(),
+  "status": zod.enum(['pending', 'completed', 'failed']),
+  "message": zod.string(),
+  "createdAt": zod.coerce.date()
+}).and(zod.object({
+  "courseTitle": zod.string(),
+  "studentName": zod.string()
+}))
+export const ListAdminPaymentsResponse = zod.array(ListAdminPaymentsResponseItem)
+
+
+/**
+ * @summary Update a payment status
+ */
+export const UpdatePaymentStatusParams = zod.object({
+  "paymentId": zod.coerce.string()
+})
+
+export const UpdatePaymentStatusBody = zod.object({
+  "status": zod.enum(['pending', 'completed', 'failed'])
+})
+
+export const UpdatePaymentStatusResponse = zod.object({
+  "id": zod.string(),
+  "courseId": zod.string(),
+  "amount": zod.number(),
+  "phoneNumber": zod.string(),
+  "status": zod.enum(['pending', 'completed', 'failed']),
+  "message": zod.string(),
+  "createdAt": zod.coerce.date()
+}).and(zod.object({
+  "courseTitle": zod.string(),
+  "studentName": zod.string()
+}))
+
+
+/**
+ * @summary List all resources across courses
+ */
+export const ListAdminResourcesResponseItem = zod.object({
+  "id": zod.string(),
+  "courseId": zod.string(),
+  "title": zod.string(),
+  "type": zod.enum(['video', 'notes', 'past-paper', 'quiz']),
+  "description": zod.string(),
+  "duration": zod.string(),
+  "size": zod.string(),
+  "isLocked": zod.boolean(),
+  "url": zod.string()
+}).and(zod.object({
+  "courseTitle": zod.string()
+}))
+export const ListAdminResourcesResponse = zod.array(ListAdminResourcesResponseItem)
+
+
+/**
+ * @summary List support messages
+ */
+export const ListAdminMessagesResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "subject": zod.string(),
+  "message": zod.string(),
+  "status": zod.enum(['received', 'replied'])
+})
+export const ListAdminMessagesResponse = zod.array(ListAdminMessagesResponseItem)
+
+
+/**
+ * @summary Mark a support message as received or replied
+ */
+export const UpdateMessageStatusParams = zod.object({
+  "messageId": zod.coerce.string()
+})
+
+export const UpdateMessageStatusBody = zod.object({
+  "status": zod.enum(['received', 'replied'])
+})
+
+export const UpdateMessageStatusResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "subject": zod.string(),
+  "message": zod.string(),
+  "status": zod.enum(['received', 'replied'])
+})
+
+
+/**
+ * @summary Get platform settings
+ */
+export const GetAdminSettingsResponse = zod.object({
+  "siteName": zod.string(),
+  "supportEmail": zod.string().email(),
+  "supportPhone": zod.string(),
+  "defaultCurrency": zod.string(),
+  "examSitting": zod.string(),
+  "maintenanceMode": zod.boolean(),
+  "allowNewEnrollments": zod.boolean(),
+  "showFeaturedCourses": zod.boolean()
+})
+
+
+/**
+ * @summary Update platform settings
+ */
+export const updateAdminSettingsBodySiteNameMin = 2;
+
+
+
+export const UpdateAdminSettingsBody = zod.object({
+  "siteName": zod.string().min(updateAdminSettingsBodySiteNameMin).optional(),
+  "supportEmail": zod.string().email().optional(),
+  "supportPhone": zod.string().optional(),
+  "defaultCurrency": zod.string().optional(),
+  "examSitting": zod.string().optional(),
+  "maintenanceMode": zod.boolean().optional(),
+  "allowNewEnrollments": zod.boolean().optional(),
+  "showFeaturedCourses": zod.boolean().optional()
+})
+
+export const UpdateAdminSettingsResponse = zod.object({
+  "siteName": zod.string(),
+  "supportEmail": zod.string().email(),
+  "supportPhone": zod.string(),
+  "defaultCurrency": zod.string(),
+  "examSitting": zod.string(),
+  "maintenanceMode": zod.boolean(),
+  "allowNewEnrollments": zod.boolean(),
+  "showFeaturedCourses": zod.boolean()
 })
 
 

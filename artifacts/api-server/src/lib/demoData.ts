@@ -1,6 +1,7 @@
 export type CourseLevel = "foundation" | "intermediate" | "advanced";
 export type ResourceType = "video" | "notes" | "past-paper" | "quiz";
 export type PaymentStatus = "pending" | "completed" | "failed";
+export type StudentStatus = "active" | "suspended";
 
 export interface Course {
   id: string;
@@ -58,6 +59,28 @@ export interface Enrollment {
   lastLesson: string;
   nextLesson: string;
   updatedAt: Date;
+}
+
+export interface Student {
+  id: string;
+  name: string;
+  email: string;
+  status: StudentStatus;
+  joinedAt: Date;
+  enrolledCourses: number;
+  progress: number;
+  lastActive: string;
+}
+
+export interface PlatformSettings {
+  siteName: string;
+  supportEmail: string;
+  supportPhone: string;
+  defaultCurrency: string;
+  examSitting: string;
+  maintenanceMode: boolean;
+  allowNewEnrollments: boolean;
+  showFeaturedCourses: boolean;
 }
 
 export const courses: Course[] = [
@@ -354,3 +377,47 @@ export const contactMessages: Array<{
   message: string;
   status: "received" | "replied";
 }> = [];
+
+export const students: Student[] = [
+  {
+    id: "student-amina",
+    name: "Amina Mwangi",
+    email: "amina@example.com",
+    status: "active",
+    joinedAt: new Date("2026-07-02T08:00:00.000Z"),
+    enrolledCourses: 2,
+    progress: 64,
+    lastActive: "Today",
+  },
+  {
+    id: "student-brian",
+    name: "Brian Otieno",
+    email: "brian@example.com",
+    status: "active",
+    joinedAt: new Date("2026-06-18T10:30:00.000Z"),
+    enrolledCourses: 1,
+    progress: 42,
+    lastActive: "Yesterday",
+  },
+  {
+    id: "student-wanjiku",
+    name: "Wanjiku Njeri",
+    email: "wanjiku@example.com",
+    status: "suspended",
+    joinedAt: new Date("2026-05-11T07:45:00.000Z"),
+    enrolledCourses: 3,
+    progress: 27,
+    lastActive: "12 days ago",
+  },
+];
+
+export const platformSettings: PlatformSettings = {
+  siteName: "KASNEB Learning Hub",
+  supportEmail: "hello@kasneblearning.co.ke",
+  supportPhone: "+254 700 000 000",
+  defaultCurrency: "KES",
+  examSitting: "November 2026 KASNEB sitting",
+  maintenanceMode: false,
+  allowNewEnrollments: true,
+  showFeaturedCourses: true,
+};
