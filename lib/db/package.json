@@ -5,7 +5,9 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/schema/index.ts"
+    "./schema": "./src/schema/index.ts",
+    "./mongo": "./src/mongo/client.ts",
+    "./mongo/schema": "./src/mongo/schema.ts"
   },
   "scripts": {
     "push": "drizzle-kit push --config ./drizzle.config.ts",
@@ -14,6 +16,7 @@
   "dependencies": {
     "drizzle-orm": "catalog:",
     "drizzle-zod": "^0.8.3",
+    "mongodb": "^6.12.0",
     "pg": "^8.23.0",
     "zod": "catalog:"
   },
