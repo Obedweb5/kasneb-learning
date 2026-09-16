@@ -85,6 +85,36 @@ router.get("/courses", async (_req, res) => {
   res.json(list);
 });
 
+// Cascade delete: removes the course, its units, its resources, and every
+// uploaded file those resources point to in object storage.
+router.delete("/courses/:courseId", async (req, res) => {
+  const { courseId } = req.params;
+  const db = await getMongoDb();
+  const course = await db
+    .collection<CourseDoc>("courses")
+    .findOne({ _id: courseId as string });
+  if (!course) {
+    res.status(404).json({ message: "Course not found." });
+    return;
+  }
+
+  const resources = await db
+    .collection<ResourceDoc>("resources")
+    .find({ courseId: courseId as string })
+    .toArray();
+  await Promise.all(resources.map((resource) => deleteFile(resource.fileKey)));
+
+  await db
+    .collection<ResourceDoc>("resources")
+    .deleteMany({ courseId: courseId as string });
+  await db
+    .collection<UnitDoc>("units")
+    .deleteMany({ courseId: courseId as string });
+  await db.collection<CourseDoc>("courses").deleteOne({ _id: courseId as string });
+
+  res.status(204).send();
+});
+
 // ---------- Units ----------
 
 router.post("/courses/:courseId/units", async (req, res) => {
@@ -129,6 +159,31 @@ router.get("/courses/:courseId/units", async (req, res) => {
   res.json(list);
 });
 
+router.delete("/units/:unitId", async (req, res) => {
+  const { unitId } = req.params;
+  const db = await getMongoDb();
+  const unit = await db
+    .collection<UnitDoc>("units")
+    .findOne({ _id: unitId as string });
+  if (!unit) {
+    res.status(404).json({ message: "Unit not found." });
+    return;
+  }
+
+  const resources = await db
+    .collection<ResourceDoc>("resources")
+    .find({ unitId: unitId as string })
+    .toArray();
+  await Promise.all(resources.map((resource) => deleteFile(resource.fileKey)));
+
+  await db
+    .collection<ResourceDoc>("resources")
+    .deleteMany({ unitId: unitId as string });
+  await db.collection<UnitDoc>("units").deleteOne({ _id: unitId as string });
+
+  res.status(204).send();
+});
+
 // ---------- Resources (notes / past papers / video tutorials) ----------
 
 // Step 1: get a presigned URL; the admin's browser uploads the raw
@@ -168,10 +223,12 @@ router.post("/units/:unitId/resources", async (req, res) => {
       .json({ message: "title, type, price, and fileKey are required." });
     return;
   }
-  if (!["video", "notes", "past-paper"].includes(type)) {
+  if (!["video", "notes", "past-paper", "image"].includes(type)) {
     res
       .status(400)
-      .json({ message: "type must be 'video', 'notes', or 'past-paper'." });
+      .json({
+        message: "type must be 'video', 'notes', 'past-paper', or 'image'.",
+      });
     return;
   }
 

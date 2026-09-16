@@ -47,6 +47,7 @@ router.get("/units/:unitId/resources", requireAuth, async (req: AuthedRequest, r
     video: [],
     notes: [],
     "past-paper": [],
+    image: [],
   };
 
   for (const resource of list) {
