@@ -25,6 +25,8 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Route, Switch, Router as WouterRouter, Link, useLocation, useParams } from 'wouter';
+import { LibraryPage, LibraryCoursePage, LibraryUnitPage } from '@/pages/library';
+import { AdminLibraryPage } from '@/pages/admin-library';
 
 const queryClient = new QueryClient();
 
@@ -99,7 +101,7 @@ function Logo({ inverse = false }: { inverse?: boolean }) {
 function SiteHeader() {
   const [location] = useLocation();
   const [open, setOpen] = useState(false);
-  const links = [['/catalog', 'Browse courses'], ['/dashboard', 'My study room'], ['/contact', 'Support']];
+  const links = [['/catalog', 'Browse courses'], ['/library', 'Resource library'], ['/dashboard', 'My study room'], ['/contact', 'Support']];
   return <header className="sticky top-0 z-40 border-b border-border/80 bg-background/90 backdrop-blur-lg">
     <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-8">
       <Logo />
@@ -370,10 +372,13 @@ function Router() {
     <Route path="/" component={Home} />
     <Route path="/catalog" component={Catalog} />
     <Route path="/courses/:courseId" component={CourseDetailPage} />
+    <Route path="/library" component={LibraryPage} />
+    <Route path="/library/courses/:courseId" component={LibraryCoursePage} />
+    <Route path="/library/courses/:courseId/units/:unitId" component={LibraryUnitPage} />
     <Route path="/dashboard" component={DashboardPage} />
     <Route path="/checkout/:courseId" component={CheckoutPage} />
     <Route path="/admin" component={AdminOverviewPage} />
-    <Route path="/admin/courses" component={AdminCoursesPage} />
+    <Route path="/admin/courses" component={AdminLibraryPage} />
     <Route path="/contact" component={ContactPage} />
     <Route path="/login" component={LoginPage} />
     <Route component={NotFound} />
