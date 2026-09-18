@@ -46,24 +46,6 @@ export interface LibraryResource {
   pageCount?: number;
 }
 
-const ADMIN_KEY_STORAGE = 'kasneb-admin-key';
-
-export function getAdminKey(): string {
-  try {
-    return window.localStorage.getItem(ADMIN_KEY_STORAGE) ?? '';
-  } catch {
-    return '';
-  }
-}
-
-export function setAdminKey(key: string) {
-  try {
-    window.localStorage.setItem(ADMIN_KEY_STORAGE, key);
-  } catch {
-    // ignore (private browsing etc.) — key just won't persist
-  }
-}
-
 async function handle<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
@@ -79,12 +61,14 @@ async function handle<T>(response: Response): Promise<T> {
   return response.json();
 }
 
+// Admin identity now travels as the httpOnly "kasneb_admin_token" cookie
+// set by /api/admin/auth/login — no key to type in or store client-side.
 function adminFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   return fetch(`/api${path}`, {
     ...init,
+    credentials: 'include',
     headers: {
       ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-      'x-admin-key': getAdminKey(),
       ...init.headers,
     },
   }).then((res) => handle<T>(res));
