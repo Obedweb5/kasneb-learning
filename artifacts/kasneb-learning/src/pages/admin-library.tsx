@@ -2,13 +2,13 @@ import { type FormEvent, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import {
-  ArrowRight, FileText, ImageIcon, KeyRound, LoaderCircle, PlayCircle,
+  ArrowRight, FileText, ImageIcon, LoaderCircle, PlayCircle,
   Plus, Trash2, UploadCloud, X,
 } from 'lucide-react';
 import {
   createAdminCourse, createAdminResource, createAdminUnit,
-  deleteAdminCourse, deleteAdminResource, deleteAdminUnit, getAdminKey,
-  listAdminCourses, listAdminUnitResources, listAdminUnits, setAdminKey,
+  deleteAdminCourse, deleteAdminResource, deleteAdminUnit,
+  listAdminCourses, listAdminUnitResources, listAdminUnits,
   uploadResourceFile, type LibraryCourse, type LibraryResource,
   type LibraryUnit, type ResourceType,
 } from '@/lib/library-api';
@@ -71,64 +71,6 @@ function resourceIcon(type: ResourceType) {
   if (type === 'video') return <PlayCircle className="h-4 w-4" />;
   if (type === 'image') return <ImageIcon className="h-4 w-4" />;
   return <FileText className="h-4 w-4" />;
-}
-
-function AdminKeyGate({ children }: { children: React.ReactNode }) {
-  const [key, setKey] = useState(getAdminKey());
-  const [saved, setSaved] = useState(Boolean(getAdminKey()));
-
-  if (saved) {
-    return (
-      <div>
-        <div className="mb-6 flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-2"><KeyRound className="h-3.5 w-3.5" /> Admin key saved on this device</span>
-          <button
-            onClick={() => setSaved(false)}
-            data-testid="button-change-admin-key"
-            className="font-semibold text-accent hover:text-primary"
-          >
-            Change
-          </button>
-        </div>
-        {children}
-      </div>
-    );
-  }
-
-  return (
-    <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-8">
-      <KeyRound className="h-8 w-8 text-accent" />
-      <h2 className="mt-4 font-display text-2xl font-bold">Admin key required</h2>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Enter the ADMIN_API_KEY configured on the server. It's stored only in this browser.
-      </p>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          setAdminKey(key);
-          setSaved(true);
-        }}
-        className="mt-5 flex gap-2"
-      >
-        <input
-          value={key}
-          onChange={(event) => setKey(event.target.value)}
-          type="password"
-          required
-          data-testid="input-admin-key"
-          placeholder="Admin key"
-          className="h-11 flex-1 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-accent"
-        />
-        <button
-          type="submit"
-          data-testid="button-save-admin-key"
-          className="rounded-lg bg-primary px-4 text-sm font-bold text-primary-foreground"
-        >
-          Save
-        </button>
-      </form>
-    </div>
-  );
 }
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
@@ -442,47 +384,45 @@ export function AdminLibraryPage() {
         </Link>
       </div>
 
-      <AdminKeyGate>
-        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-          <Panel
-            title="Courses"
-            action={
-              <button onClick={() => setCreatingCourse(true)} data-testid="button-new-course" className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground">
-                <Plus className="h-3.5 w-3.5" /> New
-              </button>
-            }
-          >
-            {coursesQuery.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-            {coursesQuery.isError && <p className="text-sm text-destructive">Could not load courses. Check the admin key.</p>}
-            <div className="grid gap-2">
-              {coursesQuery.data?.map((course) => (
-                <CoursePanel key={course._id} course={course} active={course._id === selectedCourseId} onSelect={() => setSelectedCourseId(course._id)} />
-              ))}
-              {coursesQuery.data?.length === 0 && <p className="text-sm text-muted-foreground">No courses yet — create the first one.</p>}
-            </div>
-          </Panel>
+      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+        <Panel
+          title="Courses"
+          action={
+            <button onClick={() => setCreatingCourse(true)} data-testid="button-new-course" className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground">
+              <Plus className="h-3.5 w-3.5" /> New
+            </button>
+          }
+        >
+          {coursesQuery.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+          {coursesQuery.isError && <p className="text-sm text-destructive">Could not load courses.</p>}
+          <div className="grid gap-2">
+            {coursesQuery.data?.map((course) => (
+              <CoursePanel key={course._id} course={course} active={course._id === selectedCourseId} onSelect={() => setSelectedCourseId(course._id)} />
+            ))}
+            {coursesQuery.data?.length === 0 && <p className="text-sm text-muted-foreground">No courses yet — create the first one.</p>}
+          </div>
+        </Panel>
 
-          <Panel
-            title={selectedCourse ? `Units · ${selectedCourse.title}` : 'Units'}
-            action={
-              selectedCourseId && (
-                <button onClick={() => setCreatingUnit(true)} data-testid="button-new-unit" className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground">
-                  <Plus className="h-3.5 w-3.5" /> New unit
-                </button>
-              )
-            }
-          >
-            {!selectedCourseId && <p className="text-sm text-muted-foreground">Select a course on the left to manage its units and resources.</p>}
-            {selectedCourseId && unitsQuery.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-            {selectedCourseId && unitsQuery.data?.length === 0 && <p className="text-sm text-muted-foreground">No units yet — add the first one.</p>}
-            <div className="grid gap-3">
-              {unitsQuery.data?.map((unit) => (
-                <UnitPanel key={unit._id} unit={unit} courseId={selectedCourseId as string} />
-              ))}
-            </div>
-          </Panel>
-        </div>
-      </AdminKeyGate>
+        <Panel
+          title={selectedCourse ? `Units · ${selectedCourse.title}` : 'Units'}
+          action={
+            selectedCourseId && (
+              <button onClick={() => setCreatingUnit(true)} data-testid="button-new-unit" className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground">
+                <Plus className="h-3.5 w-3.5" /> New unit
+              </button>
+            )
+          }
+        >
+          {!selectedCourseId && <p className="text-sm text-muted-foreground">Select a course on the left to manage its units and resources.</p>}
+          {selectedCourseId && unitsQuery.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+          {selectedCourseId && unitsQuery.data?.length === 0 && <p className="text-sm text-muted-foreground">No units yet — add the first one.</p>}
+          <div className="grid gap-3">
+            {unitsQuery.data?.map((unit) => (
+              <UnitPanel key={unit._id} unit={unit} courseId={selectedCourseId as string} />
+            ))}
+          </div>
+        </Panel>
+      </div>
 
       {creatingCourse && <NewCourseModal onClose={() => setCreatingCourse(false)} />}
       {creatingUnit && selectedCourseId && (
