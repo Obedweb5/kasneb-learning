@@ -53,6 +53,24 @@ export interface StudentDoc {
   createdAt: Date;
 }
 
+export type AdminRole = "owner" | "admin";
+export type AdminStatus = "active" | "invited";
+
+export interface AdminDoc {
+  _id: string;
+  name: string;
+  email: string; // stored lowercased
+  role: AdminRole;
+  status: AdminStatus; // "invited" until the person sets a password
+  passwordHash?: string; // unset while status is "invited"
+  passwordSalt?: string;
+  invitedBy?: string; // admin _id who sent the invite
+  inviteToken?: string; // unset once accepted
+  inviteTokenExpiresAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface PurchaseDoc {
   _id: string;
   studentId: string;
