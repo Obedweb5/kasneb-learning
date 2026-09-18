@@ -41,6 +41,82 @@ export interface AuthedRequest extends Request {
   studentId?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Admin auth
+//
+// Kept deliberately separate from the student token above: admin tokens
+// carry `aud: "admin"` so a leaked/stolen student session can never be
+// replayed against admin routes (and vice versa), even though both are
+// signed with the same JWT_SECRET.
+// ---------------------------------------------------------------------------
+
+export type AdminRole = "owner" | "admin";
+
+export interface AuthedAdminRequest extends Request {
+  adminId?: string;
+  adminRole?: AdminRole;
+}
+
+export const ADMIN_COOKIE_NAME = "kasneb_admin_token";
+
+export function signAdminToken(adminId: string, role: AdminRole): string {
+  return jwt.sign({ sub: adminId, role, aud: "admin" }, requireEnv("JWT_SECRET"), {
+    expiresIn: "12h",
+  });
+}
+
+/**
+ * Reads a bearer token, or falls back to the "kasneb_admin_token" cookie.
+ * Rejects with 401 if missing, invalid, or not an admin token. Every
+ * admin route in the app is expected to sit behind this.
+ */
+export function requireAdminAuth(
+  req: AuthedAdminRequest,
+  res: Response,
+  next: NextFunction,
+): void {
+  const header = req.headers.authorization;
+  const bearerToken = header?.startsWith("Bearer ")
+    ? header.slice("Bearer ".length)
+    : undefined;
+  const token = bearerToken ?? req.cookies?.[ADMIN_COOKIE_NAME];
+
+  if (!token) {
+    res.status(401).json({ message: "Admin sign-in required." });
+    return;
+  }
+
+  try {
+    const payload = jwt.verify(token, requireEnv("JWT_SECRET")) as {
+      sub: string;
+      role: AdminRole;
+      aud: string;
+    };
+    if (payload.aud !== "admin") {
+      res.status(401).json({ message: "Admin sign-in required." });
+      return;
+    }
+    req.adminId = payload.sub;
+    req.adminRole = payload.role;
+    next();
+  } catch {
+    res.status(401).json({ message: "Session expired. Please sign in again." });
+  }
+}
+
+/** Chain after requireAdminAuth to restrict a route to the owner. */
+export function requireOwner(
+  req: AuthedAdminRequest,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (req.adminRole !== "owner") {
+    res.status(403).json({ message: "Only the owner admin can do this." });
+    return;
+  }
+  next();
+}
+
 /**
  * Reads a bearer token, or falls back to the "kasneb_token" cookie so
  * the frontend can use either approach. Rejects with 401 if missing
