@@ -1,9 +1,9 @@
 import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useMutation, useQuery } from '@tanstack/react-query';
 import {
   ArrowRight, BarChart3, BadgeCheck, BookOpen, BookMarked, CalendarDays, Check, ChevronRight,
-  CircleAlert, Clock3, FileText, LibraryBig, LoaderCircle, LockKeyhole, LogIn, Mail, Menu, Pencil,
-  PlayCircle, Plus, RefreshCw, Save, Search, Send, Settings, ShieldCheck, Smartphone, Star,
+  CircleAlert, Clock3, FileText, LibraryBig, LoaderCircle, LockKeyhole, LogIn, LogOut, Mail, Menu,
+  Pencil, PlayCircle, Plus, RefreshCw, Save, Search, Send, Settings, ShieldCheck, Smartphone, Star,
   Target, Trash2, TrendingUp, UserCheck, Users, WalletCards, X, Zap,
 } from 'lucide-react';
 import {
@@ -24,9 +24,11 @@ import type {
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Route, Switch, Router as WouterRouter, Link, useLocation, useParams } from 'wouter';
+import { Route, Switch, Router as WouterRouter, Link, useLocation, useParams, useSearch } from 'wouter';
 import { LibraryPage, LibraryCoursePage, LibraryUnitPage } from '@/pages/library';
 import { AdminLibraryPage } from '@/pages/admin-library';
+import { AdminAuthProvider, useAdminAuth } from '@/hooks/use-admin-auth';
+import { acceptAdminInvite, inviteAdmin, listAdminAccounts, removeAdminAccount } from '@/lib/admin-auth';
 
 const queryClient = new QueryClient();
 
@@ -125,6 +127,8 @@ function AppShell({ children, admin = false }: { children: ReactNode; admin?: bo
 }
 
 function AdminRibbon() {
+  const { admin, logout } = useAdminAuth();
+  const [, setLocation] = useLocation();
   const links = [
     ['/admin', 'Overview'],
     ['/admin/courses', 'Content'],
@@ -132,8 +136,10 @@ function AdminRibbon() {
     ['/admin/payments', 'Payments'],
     ['/admin/support', 'Support'],
     ['/admin/settings', 'Settings'],
+    ...(admin?.role === 'owner' ? [['/admin/team', 'Team']] : []),
   ];
-  return <div className="border-b border-secondary/20 bg-primary text-primary-foreground"><div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-5 py-2 text-xs lg:px-8"><span className="font-mono uppercase tracking-[.16em] text-secondary">Admin control center</span><nav className="flex flex-wrap gap-x-4 gap-y-1">{links.map(([href, label]) => <Link key={href} href={href} data-testid={`link-admin-${label.toLowerCase().replace(' ', '-')}`} className="hover:text-secondary">{label}</Link>)}</nav></div></div>;
+  const signOut = async () => { await logout(); setLocation('/admin/login'); };
+  return <div className="border-b border-secondary/20 bg-primary text-primary-foreground"><div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-5 py-2 text-xs lg:px-8"><span className="font-mono uppercase tracking-[.16em] text-secondary">Admin control center</span><nav className="flex flex-wrap items-center gap-x-4 gap-y-1">{links.map(([href, label]) => <Link key={href} href={href} data-testid={`link-admin-${label.toLowerCase().replace(' ', '-')}`} className="hover:text-secondary">{label}</Link>)}{admin && <span className="ml-2 flex items-center gap-3 border-l border-secondary/30 pl-4"><span className="text-primary-foreground/60">{admin.name}</span><button onClick={signOut} data-testid="button-admin-signout" className="flex items-center gap-1.5 font-bold hover:text-secondary"><LogOut className="h-3.5 w-3.5" /> Sign out</button></span>}</nav></div></div>;
 }
 
 function Footer() {
@@ -303,6 +309,91 @@ function AdminSettingsPage() {
   return <AppShell admin><main className="mx-auto max-w-4xl px-5 py-12 lg:px-8 lg:py-16"><AdminHeader eyebrow="Control room" title="Set the rules." copy="Update the public identity, support details, enrollment policy, and the exam sitting shown across the platform." action={<Settings className="h-8 w-8 text-accent" />} />{notice && <div className="mt-7 flex items-center gap-3 rounded-xl border border-secondary/40 bg-secondary/20 p-4 text-sm font-semibold"><Check className="h-5 w-5 text-accent" />{notice}</div>}<form onSubmit={save} className="mt-10 grid gap-8"><section className="rounded-2xl border border-border bg-card p-6 sm:p-8"><div><p className="font-mono text-[11px] uppercase tracking-[.18em] text-accent">Public identity</p><h2 className="mt-2 font-display text-2xl font-bold">How the site presents itself</h2></div><div className="mt-7 grid gap-5 sm:grid-cols-2"><TextField label="Site name" value={form.siteName} onChange={(value) => setForm({ ...form, siteName: value })} testId="input-settings-site-name" required /><TextField label="Default currency" value={form.defaultCurrency} onChange={(value) => setForm({ ...form, defaultCurrency: value })} testId="input-settings-currency" required /><TextField label="Support email" type="email" value={form.supportEmail} onChange={(value) => setForm({ ...form, supportEmail: value })} testId="input-settings-support-email" required /><TextField label="Support phone" value={form.supportPhone} onChange={(value) => setForm({ ...form, supportPhone: value })} testId="input-settings-support-phone" required /><div className="sm:col-span-2"><TextField label="Current exam sitting" value={form.examSitting} onChange={(value) => setForm({ ...form, examSitting: value })} testId="input-settings-exam-sitting" required /></div></div></section><section className="rounded-2xl border border-border bg-card p-6 sm:p-8"><div><p className="font-mono text-[11px] uppercase tracking-[.18em] text-accent">Platform controls</p><h2 className="mt-2 font-display text-2xl font-bold">What learners can do</h2></div><div className="mt-7 grid gap-3">{([['allowNewEnrollments', 'Allow new enrollments', 'Students can buy and join courses.'], ['showFeaturedCourses', 'Show featured courses', 'Display featured units on the home page.'], ['maintenanceMode', 'Maintenance mode', 'Show that the platform is temporarily being updated.']] as const).map(([key, title, copy]) => <label key={key} className="flex cursor-pointer items-start gap-4 rounded-xl border border-border p-4 hover:border-accent/50"><input type="checkbox" checked={form[key]} onChange={(event) => setForm({ ...form, [key]: event.target.checked })} data-testid={`checkbox-settings-${key}`} className="mt-1 h-4 w-4 accent-[hsl(var(--accent))]" /><span><span className="block text-sm font-bold">{title}</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">{copy}</span></span></label>)}</div></section><button type="submit" disabled={updateSettings.isPending} data-testid="button-save-settings" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-60">{updateSettings.isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save all settings</button></form></main></AppShell>;
 }
 
+function AdminGuard({ children }: { children: ReactNode }) {
+  const { status } = useAdminAuth();
+  const [, setLocation] = useLocation();
+  useEffect(() => { if (status === 'signed-out') setLocation('/admin/login'); }, [status, setLocation]);
+  if (status === 'loading') return <div className="grid min-h-[60vh] place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-accent" /></div>;
+  if (status !== 'signed-in') return null;
+  return <>{children}</>;
+}
+
+function AdminLoginPage() {
+  useSeo('Admin sign in', 'Sign in to the KASNEB Learning Hub admin control center.');
+  const { login, status } = useAdminAuth();
+  const [, setLocation] = useLocation();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  useEffect(() => { if (status === 'signed-in') setLocation('/admin'); }, [status, setLocation]);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setError('');
+    setSubmitting(true);
+    try { await login(email, password); setLocation('/admin'); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Sign in failed.'); }
+    finally { setSubmitting(false); }
+  };
+  return <div className="noise grid min-h-[100dvh] place-items-center bg-primary px-5 text-primary-foreground"><div className="w-full max-w-md rounded-2xl border border-secondary/25 bg-background p-8 text-foreground sm:p-10"><Logo /><p className="mt-8 font-mono text-[11px] uppercase tracking-[.2em] text-accent">Admin control center</p><h1 className="mt-2 font-display text-3xl font-extrabold">Sign in to manage the room.</h1><p className="mt-3 text-sm leading-6 text-muted-foreground">This area is restricted to KASNEB Learning Hub admins.</p>{error && <div className="mt-6 flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-semibold text-destructive"><CircleAlert className="h-5 w-5 shrink-0" />{error}</div>}<form onSubmit={submit} className="mt-7 grid gap-4"><TextField label="Email" type="email" value={email} onChange={setEmail} testId="input-admin-login-email" required /><TextField label="Password" type="password" value={password} onChange={setPassword} testId="input-admin-login-password" required /><button disabled={submitting} data-testid="button-admin-login" className="mt-2 flex h-12 items-center justify-center gap-2 rounded-lg bg-primary font-bold text-primary-foreground disabled:opacity-60">{submitting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <LockKeyhole className="h-4 w-4" />} Sign in</button></form><Link href="/" data-testid="link-admin-login-home" className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-accent"><ArrowRight className="h-4 w-4 rotate-180" /> Back to the site</Link></div></div>;
+}
+
+function AdminAcceptInvitePage() {
+  useSeo('Accept admin invite', 'Set your password to join the KASNEB Learning Hub admin team.');
+  const search = useSearch();
+  const token = new URLSearchParams(search).get('token') ?? '';
+  const [, setLocation] = useLocation();
+  const { refresh } = useAdminAuth();
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setError('');
+    if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    if (password !== confirm) { setError('Passwords do not match.'); return; }
+    setSubmitting(true);
+    try { await acceptAdminInvite(token, password); await refresh(); setLocation('/admin'); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Could not accept this invite.'); }
+    finally { setSubmitting(false); }
+  };
+  if (!token) {
+    return <div className="noise grid min-h-[100dvh] place-items-center bg-primary px-5 text-primary-foreground"><div className="w-full max-w-md rounded-2xl border border-secondary/25 bg-background p-8 text-center text-foreground"><CircleAlert className="mx-auto h-8 w-8 text-accent" /><h1 className="mt-4 font-display text-2xl font-bold">Missing invite link</h1><p className="mt-2 text-sm text-muted-foreground">Open this page using the full invite link an owner sent you.</p></div></div>;
+  }
+  return <div className="noise grid min-h-[100dvh] place-items-center bg-primary px-5 text-primary-foreground"><div className="w-full max-w-md rounded-2xl border border-secondary/25 bg-background p-8 text-foreground sm:p-10"><Logo /><p className="mt-8 font-mono text-[11px] uppercase tracking-[.2em] text-accent">You're invited</p><h1 className="mt-2 font-display text-3xl font-extrabold">Set your admin password.</h1><p className="mt-3 text-sm leading-6 text-muted-foreground">Choose a password to activate your admin account.</p>{error && <div className="mt-6 flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-semibold text-destructive"><CircleAlert className="h-5 w-5 shrink-0" />{error}</div>}<form onSubmit={submit} className="mt-7 grid gap-4"><TextField label="Password" type="password" value={password} onChange={setPassword} testId="input-accept-invite-password" required /><TextField label="Confirm password" type="password" value={confirm} onChange={setConfirm} testId="input-accept-invite-confirm" required /><button disabled={submitting} data-testid="button-accept-invite" className="mt-2 flex h-12 items-center justify-center gap-2 rounded-lg bg-primary font-bold text-primary-foreground disabled:opacity-60">{submitting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />} Activate account</button></form></div></div>;
+}
+
+function AdminTeamPage() {
+  useSeo('Team', 'Manage KASNEB Learning Hub admin accounts.');
+  const { admin } = useAdminAuth();
+  const isOwner = admin?.role === 'owner';
+  const query = useQuery({ queryKey: ['admin-accounts'], queryFn: listAdminAccounts, enabled: isOwner });
+  const [form, setForm] = useState({ name: '', email: '' });
+  const [inviteLink, setInviteLink] = useState('');
+  const [error, setError] = useState('');
+  const invite = useMutation({
+    mutationFn: () => inviteAdmin(form.name, form.email),
+    onSuccess: (created) => {
+      setInviteLink(`${window.location.origin}/admin/accept-invite?token=${created.inviteToken}`);
+      setForm({ name: '', email: '' });
+      setError('');
+      queryClient.invalidateQueries({ queryKey: ['admin-accounts'] });
+    },
+    onError: (err) => setError(err instanceof Error ? err.message : 'Could not send invite.'),
+  });
+  const remove = useMutation({
+    mutationFn: (adminId: string) => removeAdminAccount(adminId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-accounts'] }),
+  });
+  const submit = (event: FormEvent) => { event.preventDefault(); setInviteLink(''); invite.mutate(); };
+  if (!isOwner) {
+    return <AppShell admin><main className="mx-auto max-w-3xl px-5 py-16 text-center"><ShieldCheck className="mx-auto h-8 w-8 text-accent" /><h1 className="mt-4 font-display text-3xl font-bold">Owner access only.</h1><p className="mt-2 text-sm text-muted-foreground">Ask the owner admin to invite or manage team accounts.</p></main></AppShell>;
+  }
+  const accounts = query.data ?? [];
+  return <AppShell admin><main className="mx-auto max-w-4xl px-5 py-12 lg:px-8 lg:py-16"><AdminHeader eyebrow="Control room" title="Manage your team." copy="Invite trusted colleagues into the admin control center, and revoke access when someone leaves." action={<Users className="h-8 w-8 text-accent" />} />{inviteLink && <div className="mt-7 rounded-xl border border-secondary/40 bg-secondary/20 p-5 text-sm"><p className="font-bold">Invite ready — share this link directly with them:</p><p className="mt-2 break-all font-mono text-xs">{inviteLink}</p><p className="mt-2 text-xs text-muted-foreground">It expires in 7 days and only works once.</p></div>}{error && <div className="mt-7 flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-semibold text-destructive"><CircleAlert className="h-5 w-5 shrink-0" />{error}</div>}<form onSubmit={submit} className="mt-8 grid gap-4 rounded-2xl border border-border bg-card p-6 sm:grid-cols-[1fr_1fr_auto] sm:items-end sm:p-8"><TextField label="Name" value={form.name} onChange={(value) => setForm({ ...form, name: value })} testId="input-invite-name" required /><TextField label="Email" type="email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} testId="input-invite-email" required /><button disabled={invite.isPending} data-testid="button-send-invite" className="flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-bold text-primary-foreground disabled:opacity-60">{invite.isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Invite</button></form><div className="mt-10 overflow-hidden rounded-2xl border border-border bg-card">{query.isLoading ? <div className="p-6"><Skeleton className="h-20" /></div> : accounts.length ? accounts.map((account) => <div key={account.id} className="flex items-center justify-between gap-4 border-b border-border p-5 last:border-0"><div><p className="font-semibold">{account.name} {account.id === admin.id && <span className="ml-2 text-xs font-normal text-muted-foreground">(you)</span>}</p><p className="text-xs text-muted-foreground">{account.email}</p></div><div className="flex items-center gap-3"><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${account.role === 'owner' ? 'bg-secondary/25' : 'bg-muted'}`}>{account.role}</span><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${account.status === 'active' ? 'bg-secondary/25' : 'bg-accent/15 text-accent'}`}>{account.status}</span>{account.id !== admin.id && <button onClick={() => { if (window.confirm(`Remove ${account.name}?`)) remove.mutate(account.id); }} data-testid={`button-remove-admin-${account.id}`} className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"><Trash2 className="h-4 w-4" /></button>}</div></div>) : <div className="p-8 text-center text-sm text-muted-foreground">No admins yet.</div>}</div></main></AppShell>;
+}
+
 function AdminCoursesPage() {
   useSeo('Manage courses', 'Create KASNEB courses and publish learning resources from the instructor console.');
   const coursesQuery = useListCourses();
@@ -377,8 +468,15 @@ function Router() {
     <Route path="/library/courses/:courseId/units/:unitId" component={LibraryUnitPage} />
     <Route path="/dashboard" component={DashboardPage} />
     <Route path="/checkout/:courseId" component={CheckoutPage} />
-    <Route path="/admin" component={AdminOverviewPage} />
-    <Route path="/admin/courses" component={AdminLibraryPage} />
+    <Route path="/admin/login" component={AdminLoginPage} />
+    <Route path="/admin/accept-invite" component={AdminAcceptInvitePage} />
+    <Route path="/admin" component={() => <AdminGuard><AdminOverviewPage /></AdminGuard>} />
+    <Route path="/admin/courses" component={() => <AdminGuard><AdminLibraryPage /></AdminGuard>} />
+    <Route path="/admin/students" component={() => <AdminGuard><AdminStudentsPage /></AdminGuard>} />
+    <Route path="/admin/payments" component={() => <AdminGuard><AdminPaymentsPage /></AdminGuard>} />
+    <Route path="/admin/support" component={() => <AdminGuard><AdminSupportPage /></AdminGuard>} />
+    <Route path="/admin/settings" component={() => <AdminGuard><AdminSettingsPage /></AdminGuard>} />
+    <Route path="/admin/team" component={() => <AdminGuard><AdminTeamPage /></AdminGuard>} />
     <Route path="/contact" component={ContactPage} />
     <Route path="/login" component={LoginPage} />
     <Route component={NotFound} />
@@ -386,7 +484,7 @@ function Router() {
 }
 
 function App() {
-  return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Router /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider>;
+  return <QueryClientProvider client={queryClient}><AdminAuthProvider><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Router /></WouterRouter><Toaster /></TooltipProvider></AdminAuthProvider></QueryClientProvider>;
 }
 
 export default App;
