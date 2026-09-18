@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Router, type IRouter, type NextFunction, type Request, type Response } from "express";
+import { Router, type IRouter } from "express";
 import { getMongoDb } from "@workspace/db/mongo";
 import type {
   CourseDoc,
@@ -7,33 +7,13 @@ import type {
   UnitDoc,
 } from "@workspace/db/mongo/schema";
 import { createUploadUrl, deleteFile } from "../lib/storage";
+import { requireAdminAuth } from "../lib/auth";
 
 const router: IRouter = Router();
 
-/**
- * Minimal stopgap so these endpoints aren't wide open: every request
- * must send the shared admin key. This is NOT a real admin-accounts
- * system (no per-admin login, no audit trail) — treat ADMIN_API_KEY
- * like a password and rotate it if it ever leaks. Replace this with
- * proper admin auth before this matters for anything beyond a small
- * trusted team.
- */
-function requireAdminKey(req: Request, res: Response, next: NextFunction) {
-  const expected = process.env["ADMIN_API_KEY"];
-  if (!expected) {
-    res
-      .status(500)
-      .json({ message: "ADMIN_API_KEY is not configured on the server." });
-    return;
-  }
-  if (req.headers["x-admin-key"] !== expected) {
-    res.status(401).json({ message: "Invalid admin key." });
-    return;
-  }
-  next();
-}
-
-router.use(requireAdminKey);
+// Every route below requires a signed-in admin (see routes/admin-auth.ts
+// for login/invite). This replaced an earlier shared-secret stopgap.
+router.use(requireAdminAuth);
 
 // ---------- Courses ----------
 

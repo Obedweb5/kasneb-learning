@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { requireAdminAuth } from "../lib/auth";
 import {
   CreateCourseBody,
   CreateResourceBody,
@@ -316,6 +317,9 @@ router.get("/payments/:paymentId", (req, res) => {
   }
   res.json(paymentForResponse(payment));
 });
+
+// Everything under /admin from here down requires a signed-in admin.
+router.use("/admin", requireAdminAuth);
 
 router.get("/admin/overview", (_req, res) => {
   const completed = payments.filter((payment) => payment.status === "completed");
